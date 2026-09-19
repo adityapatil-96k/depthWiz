@@ -75,7 +75,7 @@ app.get('/api/srtm', async (request, response) => {
     const width = image.getWidth()
     const height = image.getHeight()
     let fileBounds: [number, number, number, number] = [clampedWest, clampedSouth, clampedEast, clampedNorth]
-    try { fileBounds = image.getBoundingBox() } catch { /* no-op */ }
+    try { fileBounds = image.getBoundingBox() as [number, number, number, number] } catch { /* no-op */ }
     const raster = (await image.readRasters({ samples: [0], interleave: true })) as Float32Array | Uint16Array | Int16Array | Uint8Array
     const values: number[] = new Array(raster.length)
     for (let i = 0; i < raster.length; i += 1) values[i] = Number(raster[i])
