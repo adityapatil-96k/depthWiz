@@ -89,4 +89,12 @@ app.get('/api/srtm', async (request, response) => {
   }
 })
 
-app.listen(port, () => console.log(`DepthWizard API listening on http://localhost:${port}`))
+const server = app.listen(port, '127.0.0.1', () => console.log(`DepthWizard API listening on http://127.0.0.1:${port} · http://localhost:${port}`))
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[depthwiz-api] Port ${port} is already in use. Choose another: PORT=xxxx npm run server, or stop the process using port ${port}.`)
+  } else {
+    console.error('[depthwiz-api] Failed to start:', err.message)
+  }
+  process.exitCode = 1
+})

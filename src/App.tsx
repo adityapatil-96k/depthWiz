@@ -42,7 +42,26 @@ function App() {
   const [fitMetrics, setFitMetrics] = useState<FitMetrics>(null)
   const [srtmStatus, setSrtmStatus] = useState<string>('SRTM ready')
 
-  useEffect(() => { fetch('/api/health').then((response) => response.ok ? setApiStatus('API online') : setApiStatus('API error')).catch(() => setApiStatus('API offline')) }, [])
+  useEffect(() => {
+    const silent = () => {
+      try {
+        const ctl = new AbortController()
+        const timer = setTimeout(() => ctl.abort(), 3000)
+        return fetch('/api/health', { signal: ctl.signal })
+          .finally(() => clearTimeout(timer))
+          .then((response) => response.ok ? setApiStatus('API online') : setApiStatus('API offline'))
+          .catch(() => setApiStatus('API offline · use dev:full'))
+      } catch {
+        setApiStatus('API offline · use dev:full')
+        return Promise.resolve()
+      }
+    }
+    void silent()
+    const retry = window.setInterval(() => {
+      void silent()
+    }, 10000)
+    return () => window.clearInterval(retry)
+  }, [])
 
   useEffect(() => {
     if (!viewerElement.current) return
@@ -210,7 +229,13 @@ function App() {
     setFile(nextFile); setInputType(isGeo ? 'GeoTIFF' : 'RGB image'); setGeoMetadata(null); setRelativeDepth(null); setCalibration(null); setRasterHeights(null); setRasterStats(null); setReferenceName(null); setTerrainClass(null); setFitMetrics(null); setGeoTiffKind('auto'); setAutoDetectedKind(null!); setSrtmStatus('SRTM ready'); setStatus('Reading imagery')
     const uploadData = new FormData()
     uploadData.append('imagery', nextFile)
-    fetch('/api/upload', { method: 'POST', body: uploadData }).catch(() => setApiStatus('API upload unavailable'))
+    try {
+      const ctl = new AbortController()
+      const timer = setTimeout(() => ctl.abort(), 2000)
+      void fetch('/api/upload', { method: 'POST', body: uploadData, signal: ctl.signal })
+        .finally(() => clearTimeout(timer))
+        .catch(() => { setApiStatus('API offline · use dev:full') })
+    } catch { setApiStatus('API offline · use dev:full') }
     try {
       if (isGeo) {
         const tiffImage = await (await fromBlob(nextFile)).getImage()
